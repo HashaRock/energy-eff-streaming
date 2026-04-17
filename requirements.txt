@@ -1,0 +1,6 @@
+paramiko>=3.4.0
+pandas>=2.0.0
+numpy>=1.24.0
+matplotlib>=3.7.0
+scipy>=1.11.0
+m3u8>=3.5.0

@@ -1,0 +1,3 @@
+http://localhost:8080/hls.key
+server/tls/hls.key
+2a00c71a8f583a82d35a4132d081a3a8
