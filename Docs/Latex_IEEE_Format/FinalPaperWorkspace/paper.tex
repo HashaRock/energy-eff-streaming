@@ -7,48 +7,50 @@
 \usepackage{textcomp}
 \usepackage{xcolor}
 \usepackage{booktabs}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
 
 \begin{document}
 
-\title{Energy Cost of Streaming Protocol Choices:\\
-An Empirical Study of HLS over HTTP/1.1 and HTTP/2}
+\title{Energy Cost of Streaming Delivery and Security Choices:\\
+An Empirical Study of Protocol, Codec, and DRM Effects}
 
 \author{
 \IEEEauthorblockN{Hassaan Ali}
 \IEEEauthorblockA{
-  \textit{Department of Electrical and Computer Engineering}\\
+  \textit{Department of Computer Science}\\
   \textit{The University of Texas at Austin}\\
   Austin, TX, USA\\
   hassaaniali@utexas.edu}
 \and
 \IEEEauthorblockN{Shyamal Gupta}
 \IEEEauthorblockA{
-  \textit{Department of Electrical and Computer Engineering}\\
+  \textit{Department of Computer Science}\\
   \textit{The University of Texas at Austin}\\
-  Austin, TX, USA}
+  Austin, TX, USA\\
+  shyamal.gupta@utexas.edu}
 }
 
 \maketitle
 
 \begin{abstract}
-Video streaming now accounts for the majority of global internet traffic, and the protocol
-stack choices made by content delivery systems directly affect the energy consumed by
-every client device. This paper presents a controlled empirical study of how HTTP
-protocol version (HTTP/1.1 vs. HTTP/2), transport security (TLS on/off), and segment
-encryption (AES-128) affect client-side energy consumption during HTTP Live Streaming
-(HLS) playback. We built a self-contained measurement testbed on macOS, using Apple
-\texttt{powermetrics} for CPU energy capture and a segment-accurate HLS player emulator
-to eliminate confounding background processes. Over 30 trials (5 per configuration, 6
-configurations), we find that HTTP/2 incurs approximately 13\% higher client energy than
-HTTP/1.1 for HLS workloads on a local network, TLS adds at most 2\% overhead, and
-AES-128 segment encryption has no statistically significant energy impact. These results
-suggest that migrating HLS delivery from HTTP/1.1 to HTTP/2 may increase client battery
-drain in low-latency, high-bandwidth environments, with little security benefit per joule
-spent.
+Video streaming dominates downstream internet traffic, so delivery and security design
+choices directly influence client energy use. This paper presents a controlled empirical
+study of client-side streaming energy across two experiment suites. The first suite
+compares HLS over HTTP/1.1 and HTTP/2, with TLS and AES-128 toggles, under 30 trials.
+The second suite adds codec and DRM-style comparisons under 50 additional trials,
+including rate-limited bulk transfer (MP4, MKV, AV1), HLS codec variants (H.264/TS vs.
+AV1/fMP4), and decryption modes that approximate AES-128-CBC, CENC-CTR, and CBCS-CBC.
+Using a macOS testbed with \texttt{powermetrics}, we observe that HTTP/2 remains more
+energy intensive than HTTP/1.1 for sequential HLS requests in loopback conditions, AV1
+fMP4 HLS is lower energy per megabyte than H.264/TS HLS in our setup, and measured DRM
+mode differences are smaller than the delivery-mode gap. The results indicate that request
+pattern and transfer duration dominate energy behavior more strongly than cryptographic
+mode choice in this controlled environment.
 \end{abstract}
 
 \begin{IEEEkeywords}
-energy-efficient computing, HTTP Live Streaming, HLS, HTTP/2, TLS, AES-128,
+energy-efficient computing, HTTP Live Streaming, HLS, HTTP/2, TLS, codec energy, DRM,
 powermetrics, client energy, video streaming
 \end{IEEEkeywords}
 
@@ -80,9 +82,11 @@ Our contributions are:
     energy on macOS using \texttt{powermetrics}.
   \item A controlled experiment comparing six HLS delivery configurations across five
     repeated trials each.
+  \item An extended codec and DRM suite with ten configurations and five repeated
+    trials per configuration, including bulk, HLS codec, and decryption-mode tests.
   \item Quantitative evidence that HTTP/2 carries an energy penalty for HLS in
-    low-latency environments, and that AES-128 encryption has negligible client
-    energy cost.
+    low-latency environments, while codec and delivery-mode differences dominate
+    the larger trial set.
 \end{itemize}
 
 The remainder of the paper is organized as follows. Section II covers background on
@@ -242,6 +246,22 @@ MAD quantifies trial-to-trial variability without assuming Gaussian distribution
 \text{MAD} = \text{median}\left( |x_i - \text{median}(x)| \right)
 \end{equation}
 
+\subsection{Extended Codec and DRM Matrix}
+
+To capture effects not observable in the original six-configuration HLS matrix, we ran a
+second standalone suite with 10 configurations and 5 trials each (50 trials total). This
+suite used HTTP/1.1 without TLS to isolate codec and decryption effects.
+
+The codec group included three rate-limited bulk downloads (MP4, MKV, AV1-MP4) and two
+HLS codec variants (H.264/TS and AV1/fMP4). Bulk transfers were rate-limited at the nginx
+layer to ensure each run exceeded the \texttt{powermetrics} sampling floor.
+
+The DRM group used a fixed H.264 stream and compared five schemes: plaintext baseline,
+key-fetch-only AES-128 path, AES-128 decryption, CENC-like CTR decryption, and CBCS-like
+CBC decryption. CENC and CBCS were implemented as cipher-mode approximations on the same
+segment bytes. This isolates CPU-side crypto work per byte while keeping network and media
+content constant.
+
 
 \section{Results}
 
@@ -349,6 +369,75 @@ of TLS or encryption choice.}
 \label{fig:all}
 \end{figure}
 
+\subsection{Codec and DRM Extension Results}
+
+Table~\ref{tab:codec_drm} reports medians and MAD values from the 50-trial extension.
+All runs produced usable power samples ($n_{\text{samples}} \ge 8$), so no row was dropped.
+
+\input{../../../analysis/tables/codec_drm_table.tex}
+
+\subsubsection{Bulk Container Comparison}
+
+Fig.~\ref{fig:codec_bulk} shows median J/MB for rate-limited bulk transfer. MP4 is lowest
+(0.1047 J/MB), AV1-MP4 is close (0.1220 J/MB), and MKV is highest (0.1359 J/MB).
+
+\begin{figure}[t]
+\centerline{\includegraphics[width=\columnwidth]{../../../analysis/plots/codec_drm_01_codec_bulk.png}}
+\caption{Rate-limited bulk transfer energy by container or codec format. Error bars are
+MAD across five trials.}
+\label{fig:codec_bulk}
+\end{figure}
+
+The differences are modest and likely come from a mix of file size, parser overhead, and
+short trial duration sensitivity. This is expected because the same host performs both
+serving and receiving, and network variability is minimal.
+
+\subsubsection{HLS Codec Comparison}
+
+Fig.~\ref{fig:codec_hls_ext} shows AV1/fMP4 HLS at 0.9554 J/MB versus H.264/TS HLS at
+1.1922 J/MB.
+
+\begin{figure}[t]
+\centerline{\includegraphics[width=\columnwidth]{../../../analysis/plots/codec_drm_02_codec_hls.png}}
+\caption{HLS codec energy comparison between H.264/TS and AV1/fMP4.}
+\label{fig:codec_hls_ext}
+\end{figure}
+
+The simple explanation is transfer efficiency. The AV1 run moved fewer bytes and completed
+faster in this setup, so total joules per megabyte decreased despite codec complexity.
+
+\subsubsection{DRM Scheme Comparison}
+
+Fig.~\ref{fig:drm_ext} compares plaintext, key-fetch-only, and decrypting DRM schemes.
+Median values range from 0.5865 to 1.2855 J/MB, with noticeable spread in the plaintext
+baseline.
+
+\begin{figure}[t]
+\centerline{\includegraphics[width=\columnwidth]{../../../analysis/plots/codec_drm_03_drm_overhead.png}}
+\caption{Energy by DRM scheme for HLS with fixed content and HTTP/1.1.}
+\label{fig:drm_ext}
+\end{figure}
+
+Across decrypting schemes, values are relatively close. This indicates that cipher mode
+choice is a second-order effect compared with delivery pacing and background system noise.
+In other words, fetching and playing the stream dominates energy more than CBC versus CTR
+for this workload scale.
+
+\subsubsection{Decrypt CPU Time}
+
+Fig.~\ref{fig:drm_cpu_ext} reports median decrypt wall-time per stream. AES-128-decrypt and
+CBCS are near 333 ms, while CENC is near 356 ms.
+
+\begin{figure}[t]
+\centerline{\includegraphics[width=\columnwidth]{../../../analysis/plots/codec_drm_04_decrypt_cpu.png}}
+\caption{Measured decrypt CPU wall-time by scheme. Differences are small across cipher
+modes for this segment size and trial duration.}
+\label{fig:drm_cpu_ext}
+\end{figure}
+
+The straightforward interpretation is that all three modes execute similar block-level work
+over the same byte volume, so CPU-time differences stay small.
+
 
 \section{Discussion}
 
@@ -416,6 +505,11 @@ report only HLS results in this paper. Future work using a higher-frequency meas
 approach (e.g., external power meters or RAPL on Linux) could capture bulk transfer
 energy.
 
+\textbf{DRM implementation is an approximation.} The CENC and CBCS paths model cipher
+mode cost in software but do not implement a full commercial license workflow or hardware
+trusted execution path. The results should be interpreted as comparative crypto workload
+cost, not a full platform DRM certification result.
+
 \subsection{Future Work}
 
 Repeating this experiment over a real wide-area network would reveal how propagation
@@ -425,29 +519,63 @@ lacks it), and would complete the protocol evolution comparison. A parallel serv
 energy measurement using RAPL would quantify whether HTTP/2's connection consolidation
 reduces server energy enough to offset the client overhead.
 
+\subsection{Final Takeaways for Deployment Decisions}
+
+The combined results suggest a practical rule: optimize delivery path first, then optimize
+security implementation details. In this study, changes in delivery mode and stream format
+shifted J/MB more than changes in cipher mode.
+
+\textbf{When to prioritize energy savings.} If a service streams mostly long-form video on
+stable networks, and user battery life is a key product metric, companies should prefer the
+lowest-energy delivery stack validated on their own clients. In our environment, HTTP/1.1
+with efficient media packaging reduced energy versus HTTP/2 for sequential HLS traffic.
+For this case, reducing transferred bytes and avoiding unnecessary protocol overhead gives
+the largest return.
+
+\textbf{When stronger DRM is worth the energy cost.} If business requirements include studio
+licensing, premium release windows, or regional contractual obligations, using Widevine or
+equivalent DRM is often mandatory regardless of small client energy overhead. In those cases,
+the correct question is not whether DRM is free, but whether the added energy is acceptable
+relative to content-value protection and compliance risk. For most premium catalogs, the
+business penalty of weak protection is much larger than the measured per-stream energy delta.
+
+\textbf{A simple decision framework.} Teams can evaluate four factors jointly:
+\begin{enumerate}
+  \item \textit{Content risk}: premium early-release content and high piracy risk favor full
+    DRM (for example, Widevine L1 on supported devices).
+  \item \textit{Device profile}: battery-constrained mobile audiences increase the importance
+    of low J/MB delivery paths.
+  \item \textit{Network reality}: if real WAN latency is high, HTTP/2 or HTTP/3 may recover
+    enough wall-clock time to offset protocol overhead.
+  \item \textit{Regulatory and contractual constraints}: partner requirements can hard-gate the
+    feasible security options.
+\end{enumerate}
+
+\textbf{Recommended default policy.} Use strong DRM when required by content agreements, then
+minimize energy inside that constraint by tuning encoding ladders, segment duration, caching,
+and protocol selection per device class. For non-premium content without strict licensing,
+lighter protection may be acceptable, and delivery efficiency should dominate the design.
+
 
 \section{Conclusion}
 
-We measured client-side energy consumption for HLS video streaming across six protocol
-configurations over 30 controlled trials on macOS. Our key findings are: (1) HTTP/2
-incurs approximately 11\% higher client energy per megabyte than HTTP/1.1 for HLS in
-a low-latency environment, driven by its mandatory TLS requirement and additional
-framing overhead rather than any network savings; (2) TLS adds at most 2\% energy
-overhead for HTTP/1.1 HLS, an amount that is within trial-to-trial variability and not
-statistically distinguishable; (3) AES-128 segment encryption has no measurable energy
-impact on Apple Silicon hardware.
+We measured client-side streaming energy with two controlled suites on macOS. In the first
+suite (30 trials), HTTP/2 consumed more energy per megabyte than HTTP/1.1 for sequential
+HLS requests, while TLS and AES-128 toggles were within small variability bands. In the
+second suite (50 trials), AV1/fMP4 HLS showed lower J/MB than H.264/TS HLS in our setup,
+and DRM decryption-mode differences were smaller than delivery-mode differences.
 
-These results inform two practical decisions: content providers migrating HLS delivery
-to HTTP/2 should budget for a client energy increase in bandwidth-rich environments,
-and there is no energy-based reason to avoid AES-128 segment encryption on modern
-client hardware.
+The central practical conclusion is simple. For this local, low-latency environment,
+delivery pattern and transfer duration are the main energy drivers. Security features and
+cipher-mode choice contribute less to total client energy than protocol and media-pipeline
+structure.
 
 
 \section*{Acknowledgment}
 
-The authors thank the teaching staff of the Energy-Efficient Computing course at The
-University of Texas at Austin for feedback on the research proposal and experiment
-design.
+We thank the teaching staff of Energy Efficient Computing for providing us with
+great feedback on the research proposal and key insights into energy consumption
+throughout the semester.
 
 
 \begin{thebibliography}{00}

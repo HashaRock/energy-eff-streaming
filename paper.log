@@ -1,0 +1,35 @@
+This is pdfTeX, Version 3.141592653-2.6-1.40.26 (TeX Live 2024) (preloaded format=pdflatex 2025.1.22)  17 APR 2026 12:59
+entering extended mode
+ restricted \write18 enabled.
+ %&-line parsing enabled.
+**/Users/hassaanali/coding-workspace/energy-eff-streaming/Docs/Latex_IEEE_Forma
+t/FinalPaperWorkspace/paper.tex
+
+(/Users/hassaanali/coding-workspace/energy-eff-streaming/Docs/Latex_IEEE_Format
+/FinalPaperWorkspace/paper.tex
+LaTeX2e <2023-11-01> patch level 1
+L3 programming layer <2024-02-20>
+
+! LaTeX Error: File `IEEEtran.cls' not found.
+
+Type X to quit or <RETURN> to proceed,
+or enter new name. (Default extension: cls)
+
+Enter file name: 
+! Emergency stop.
+<read *> 
+         
+l.2 \IEEEoverridecommandlockouts
+                                ^^M
+End of file on the terminal!
+
+ 
+Here is how much of TeX's memory you used:
+ 23 strings out of 475567
+ 777 string characters out of 5777889
+ 1925187 words of memory out of 5000000
+ 22272 multiletter control sequences out of 15000+600000
+ 558069 words of font info for 36 fonts, out of 8000000 for 9000
+ 319 hyphenation exceptions out of 8191
+ 19i,0n,29p,176b,17s stack positions out of 10000i,1000n,20000p,200000b,200000s
+!  ==> Fatal error occurred, no output PDF file produced!

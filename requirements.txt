@@ -4,3 +4,4 @@ numpy>=1.24.0
 matplotlib>=3.7.0
 scipy>=1.11.0
 m3u8>=3.5.0
+pycryptodome>=3.20.0
